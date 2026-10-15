@@ -1,0 +1,9 @@
+{
+  "id": "reading-width",
+  "name": "Reading Width",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Регулируемая ширина полосы чтения: ползунок в строке состояния и команды «Шире», «Уже», «Сбросить».",
+  "author": "Jw Ujl",
+  "isDesktopOnly": false
+}
