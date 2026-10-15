@@ -16,4 +16,5 @@
 }
 .reading-width-value { font-size: var(--font-ui-small); color: var(--text-muted); }
 .reading-width-range { width: 100%; }
+.reading-width-hint { font-size: var(--font-ui-smaller); color: var(--text-muted); line-height: 1.35; }
 .reading-width-reset { align-self: flex-start; }

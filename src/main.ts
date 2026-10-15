@@ -1,17 +1,19 @@
 import { Plugin } from 'obsidian';
 import { WidthPopover } from './popover';
 import { WidthSettingTab } from './settings';
-import { VAR_NAME, clampWidth, cssValue, parseSettings, stepWidth, widthLabel, type WidthHost, type WidthSettings } from './width';
+import { VAR_NAME, WheelNotches, clampWidth, cssValue, parseSettings, stepWidth, widthLabel, wheelHint, type WidthHost, type WidthSettings } from './width';
 
 const SAVE_DELAY = 300;
 
 export default class ReadingWidthPlugin extends Plugin implements WidthHost {
-  settings: WidthSettings = { width: null, step: 50 };
+  settings: WidthSettings = { width: null, step: 50, wheelMod: 'alt' };
   private statusEl!: HTMLElement;
   private popover: WidthPopover | null = null;
   private saveTimer: number | null = null;
   /** Every document the variable was put on: the main window and the pop-out windows seen so far. */
   private seen = new Set<Document>([document]);
+  private wheelOn = new Set<Document>();
+  private notches = new WheelNotches();
 
   async onload(): Promise<void> {
     this.settings = parseSettings(await this.loadData());
@@ -43,6 +45,8 @@ export default class ReadingWidthPlugin extends Plugin implements WidthHost {
 
   getWidth(): number | null { return this.settings.width; }
 
+  wheelHint(): string { return wheelHint(this.settings.wheelMod); }
+
   setWidth(px: number | null): void {
     this.settings.width = px === null ? null : clampWidth(px);
     this.applyAll();
@@ -51,14 +55,37 @@ export default class ReadingWidthPlugin extends Plugin implements WidthHost {
     this.saveSoon();
   }
 
-  step(dir: 1 | -1): void { this.setWidth(stepWidth(this.settings.width, dir, this.settings.step)); }
+  step(dir: 1 | -1, times = 1): void {
+    let w = this.settings.width;
+    for (let i = 0; i < times; i++) w = stepWidth(w, dir, this.settings.step);
+    this.setWidth(w);
+  }
 
   saveSoon(): void {
     if (this.saveTimer !== null) window.clearTimeout(this.saveTimer);
     this.saveTimer = window.setTimeout(() => { this.saveTimer = null; void this.saveData(this.settings); }, SAVE_DELAY);
   }
 
+  /** Modifier + wheel over a note changes the width without opening the popover. The page does not scroll meanwhile. */
+  private onWheel = (e: WheelEvent): void => {
+    const mod = this.settings.wheelMod;
+    if (mod === 'off' || !e[`${mod}Key` as 'altKey' | 'ctrlKey' | 'shiftKey']) return;
+    const t = e.target as Element | null;
+    if (!t || t.closest('.reading-width-popover') || !t.closest('.markdown-reading-view, .markdown-source-view')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const n = this.notches.push(e.deltaY || e.deltaX, e.deltaMode);
+    if (n !== 0) this.step(n > 0 ? 1 : -1, Math.abs(n));
+  };
+
+  private watchWheel(doc: Document): void {
+    if (this.wheelOn.has(doc)) return;
+    this.wheelOn.add(doc);
+    this.registerDomEvent(doc, 'wheel', this.onWheel, { passive: false, capture: true });
+  }
+
   private applyTo(doc: Document): void {
+    this.watchWheel(doc);
     const w = this.settings.width;
     if (w === null) doc.body.style.removeProperty(VAR_NAME);
     else doc.body.style.setProperty(VAR_NAME, cssValue(w));

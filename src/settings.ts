@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type ReadingWidthPlugin from './main';
-import { DEFAULT_WIDTH, MAX_STEP, MAX_WIDTH, MIN_STEP, MIN_WIDTH, SLIDER_STEP, parseStep } from './width';
+import { DEFAULT_WIDTH, MAX_STEP, MAX_WIDTH, MIN_STEP, MIN_WIDTH, SLIDER_STEP, parseStep, parseWheelModifier } from './width';
 
 export class WidthSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: ReadingWidthPlugin) {
@@ -32,6 +32,28 @@ export class WidthSettingTab extends PluginSettingTab {
         .onChange((v) => {
           this.plugin.settings.step = parseStep(Number(v));
           this.plugin.saveSoon();
+        }));
+
+    new Setting(containerEl)
+      .setName('Колесо мыши над заметкой')
+      .setDesc('Клавиша, которую надо держать, чтобы колесо меняло ширину (шаг тот же). Над открытой панелькой колесо работает без клавиши.')
+      .addDropdown((d) => d
+        .addOptions({ alt: 'Alt', ctrl: 'Ctrl', shift: 'Shift', off: 'Выключено' })
+        .setValue(this.plugin.settings.wheelMod)
+        .onChange((v) => {
+          this.plugin.settings.wheelMod = parseWheelModifier(v);
+          this.plugin.saveSoon();
+        }));
+
+    new Setting(containerEl)
+      .setName('Горячие клавиши')
+      .setDesc('Команды «Шире», «Уже», «Сбросить» назначаются в разделе Obsidian «Горячие клавиши».')
+      .addButton((b) => b
+        .setButtonText('Назначить')
+        .onClick(() => {
+          const setting = (this.app as unknown as { setting?: { openTabById(id: string): unknown; activeTab?: { setQuery?(q: string): void } } }).setting;
+          setting?.openTabById('hotkeys');
+          setting?.activeTab?.setQuery?.('Reading Width');
         }));
   }
 }

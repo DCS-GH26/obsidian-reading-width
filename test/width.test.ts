@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampWidth, cssValue, parseSettings, parseStep, stepWidth, widthLabel } from '../src/width';
+import { WheelNotches, clampWidth, cssValue, parseSettings, parseStep, parseWheelModifier, stepWidth, wheelHint, widthLabel } from '../src/width';
 
 describe('clampWidth', () => {
   it('holds the range and rounds', () => {
@@ -28,17 +28,17 @@ describe('parseStep', () => {
 
 describe('parseSettings', () => {
   it('reads a good data.json', () => {
-    expect(parseSettings({ width: 900, step: 20 })).toEqual({ width: 900, step: 20 });
+    expect(parseSettings({ width: 900, step: 20 })).toEqual({ width: 900, step: 20, wheelMod: 'alt' });
   });
   it('null width means default', () => {
-    expect(parseSettings({ width: null, step: 50 })).toEqual({ width: null, step: 50 });
+    expect(parseSettings({ width: null, step: 50 })).toEqual({ width: null, step: 50, wheelMod: 'alt' });
   });
   it('clamps an out-of-range width', () => {
     expect(parseSettings({ width: 99999 }).width).toBe(2400);
     expect(parseSettings({ width: 5 }).width).toBe(400);
   });
   it('survives a broken data.json', () => {
-    const def = { width: null, step: 50 };
+    const def = { width: null, step: 50, wheelMod: 'alt' };
     expect(parseSettings(null)).toEqual(def);
     expect(parseSettings(undefined)).toEqual(def);
     expect(parseSettings('900')).toEqual(def);
@@ -71,5 +71,44 @@ describe('labels', () => {
   });
   it('css value', () => {
     expect(cssValue(900)).toBe('900px');
+  });
+});
+
+describe('wheel modifier', () => {
+  it('keeps a known value, defaults the rest', () => {
+    expect(parseWheelModifier('ctrl')).toBe('ctrl');
+    expect(parseWheelModifier('off')).toBe('off');
+    expect(parseWheelModifier('meta')).toBe('alt');
+    expect(parseWheelModifier(undefined)).toBe('alt');
+    expect(parseSettings({ wheelMod: 'shift' }).wheelMod).toBe('shift');
+  });
+  it('hint names the key, or none when off', () => {
+    expect(wheelHint('alt')).toBe('Колесо: ±10 px, Shift ×5. Alt + колесо над заметкой.');
+    expect(wheelHint('off')).toBe('Колесо: ±10 px, Shift ×5.');
+  });
+});
+
+describe('WheelNotches', () => {
+  it('wheel away is wider, toward you is narrower', () => {
+    expect(new WheelNotches().push(-100)).toBe(1);
+    expect(new WheelNotches().push(100)).toBe(-1);
+  });
+  it('small touchpad deltas add up to one notch', () => {
+    const w = new WheelNotches();
+    expect([w.push(-40), w.push(-40), w.push(-40)]).toEqual([0, 0, 1]);
+  });
+  it('a fast flick gives several notches', () => {
+    expect(new WheelNotches().push(-300)).toBe(3);
+  });
+  it('reversing drops the leftover', () => {
+    const w = new WheelNotches();
+    expect(w.push(-60)).toBe(0);
+    expect(w.push(60)).toBe(0); // the -60 is dropped, 60 starts over
+    expect(w.push(60)).toBe(-1); // 120 in the new direction; without the drop this would stay 0
+  });
+  it('line and page modes are scaled, zero and junk ignored', () => {
+    expect(new WheelNotches().push(-3, 1)).toBe(1);
+    expect(new WheelNotches().push(0)).toBe(0);
+    expect(new WheelNotches().push(NaN)).toBe(0);
   });
 });
