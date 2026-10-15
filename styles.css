@@ -1,0 +1,19 @@
+.reading-width-status { cursor: pointer; }
+.reading-width-status:hover { color: var(--text-normal); }
+
+.reading-width-popover {
+  position: fixed;
+  z-index: var(--layer-popover, 50);
+  width: 220px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  box-shadow: var(--shadow-s);
+}
+.reading-width-value { font-size: var(--font-ui-small); color: var(--text-muted); }
+.reading-width-range { width: 100%; }
+.reading-width-reset { align-self: flex-start; }
